@@ -1,0 +1,106 @@
+<%- include('../layout/header') %>
+
+<section class="py-5" style="min-height: 80vh; display: flex; align-items: center;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-5 col-md-7">
+                <div class="card card-islamic shadow-lg">
+                    <div class="card-header text-center py-4">
+                        <i class="fas fa-user-graduate fa-3x mb-3"></i>
+                        <h3 class="mb-0 fw-bold">Student Login</h3>
+                        <p class="mb-0 text-light">Access your student portal</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="/auth/student-login" method="POST" class="needs-validation" novalidate>
+                            <!-- Admission Number Field -->
+                            <div class="mb-3">
+                                <label for="admission_number" class="form-label">
+                                    <i class="fas fa-id-card me-2"></i>Admission Number
+                                </label>
+                                <input 
+                                    type="text" 
+                                    class="form-control form-control-lg" 
+                                    id="admission_number" 
+                                    name="admission_number" 
+                                    placeholder="Enter your admission number"
+                                    required
+                                >
+                                <div class="invalid-feedback">
+                                    Please enter your admission number.
+                                </div>
+                            </div>
+
+                            <!-- Password Field -->
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    <i class="fas fa-lock me-2"></i>Password
+                                </label>
+                                <input 
+                                    type="password" 
+                                    class="form-control form-control-lg" 
+                                    id="password" 
+                                    name="password" 
+                                    placeholder="Enter your password"
+                                    required
+                                >
+                                <div class="invalid-feedback">
+                                    Please enter your password.
+                                </div>
+                            </div>
+
+                            <!-- Remember Me & Forgot Password -->
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                                    <label class="form-check-label" for="remember">
+                                        Remember me
+                                    </label>
+                                </div>
+                                <a href="#" class="text-islamic text-decoration-none">Forgot Password?</a>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-islamic w-100 btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </button>
+
+                            <!-- Demo Credentials Info -->
+                            <div class="alert alert-info mt-4 mb-0" role="alert">
+                                <strong><i class="fas fa-info-circle me-2"></i>Demo Login:</strong><br>
+                                <small>
+                                    Admission Number: <code>STU2024001</code><br>
+                                    Password: <code>student123</code>
+                                </small>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-footer text-center py-3 bg-light">
+                        <small class="text-muted">
+                            Don't have an account? 
+                            <a href="/auth/student-register" class="text-islamic fw-bold text-decoration-none">
+                                Register Here
+                            </a>
+                        </small>
+                        <br>
+                        <small class="text-muted mt-2 d-block">
+                            Are you a staff member? 
+                            <a href="/auth/staff-login" class="text-islamic fw-bold text-decoration-none">
+                                Staff Login
+                            </a>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Back to Home -->
+                <div class="text-center mt-4">
+                    <a href="/" class="text-muted text-decoration-none">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<%- include('../layout/footer') %>
+

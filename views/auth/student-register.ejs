@@ -1,0 +1,285 @@
+<%- include('../layout/header') %>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <div class="card card-islamic shadow-lg">
+                    <div class="card-header text-center py-4">
+                        <i class="fas fa-user-plus fa-3x mb-3"></i>
+                        <h3 class="mb-0 fw-bold">Student Registration</h3>
+                        <p class="mb-0 text-light">Create your student account</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="/auth/student-register" method="POST" class="needs-validation" novalidate>
+                            
+                            <!-- Personal Information Section -->
+                            <div class="mb-4">
+                                <h5 class="text-islamic border-bottom pb-2 mb-3">
+                                    <i class="fas fa-user me-2"></i>Personal Information
+                                </h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="full_name" class="form-label">
+                                            Full Name <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            id="full_name" 
+                                            name="full_name" 
+                                            placeholder="Enter full name"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Please enter your full name.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="email" class="form-label">
+                                            Email Address <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="email" 
+                                            class="form-control" 
+                                            id="email" 
+                                            name="email" 
+                                            placeholder="student@example.com"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Please enter a valid email address.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="date_of_birth" class="form-label">
+                                            Date of Birth <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="date" 
+                                            class="form-control" 
+                                            id="date_of_birth" 
+                                            name="date_of_birth"
+                                            max="<%= new Date().toISOString().split('T')[0] %>"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Please select your date of birth.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="gender" class="form-label">
+                                            Gender <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select" id="gender" name="gender" required>
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                        </select>
+                                        <div class="invalid-feedback">
+                                            Please select your gender.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="class_name" class="form-label">
+                                        Class <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select" id="class_name" name="class_name" required>
+                                        <option value="">Select Class</option>
+                                        <option value="1">Class 1</option>
+                                        <option value="2">Class 2</option>
+                                        <option value="3">Class 3</option>
+                                        <option value="4">Class 4</option>
+                                        <option value="5">Class 5</option>
+                                        <option value="6">Class 6</option>
+                                        <option value="7">Class 7</option>
+                                        <option value="8">Class 8</option>
+                                        <option value="9">Class 9</option>
+                                        <option value="10">Class 10</option>
+                                        <option value="11">Class 11</option>
+                                        <option value="12">Class 12</option>
+                                    </select>
+                                    <div class="invalid-feedback">
+                                        Please select your class.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Parent/Guardian Information -->
+                            <div class="mb-4">
+                                <h5 class="text-islamic border-bottom pb-2 mb-3">
+                                    <i class="fas fa-users me-2"></i>Parent/Guardian Information
+                                </h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="parent_name" class="form-label">
+                                            Parent/Guardian Name <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            class="form-control" 
+                                            id="parent_name" 
+                                            name="parent_name" 
+                                            placeholder="Enter parent/guardian name"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Please enter parent/guardian name.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="parent_phone" class="form-label">
+                                            Parent/Guardian Phone <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="tel" 
+                                            class="form-control" 
+                                            id="parent_phone" 
+                                            name="parent_phone" 
+                                            placeholder="+234 123 456 7890"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Please enter parent/guardian phone number.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="address" class="form-label">
+                                        Home Address
+                                    </label>
+                                    <textarea 
+                                        class="form-control" 
+                                        id="address" 
+                                        name="address" 
+                                        rows="2" 
+                                        placeholder="Enter home address"
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <!-- Account Security -->
+                            <div class="mb-4">
+                                <h5 class="text-islamic border-bottom pb-2 mb-3">
+                                    <i class="fas fa-lock me-2"></i>Account Security
+                                </h5>
+                                
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="password" class="form-label">
+                                            Password <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="password" 
+                                            class="form-control" 
+                                            id="password" 
+                                            name="password" 
+                                            placeholder="Create a password (min. 6 characters)"
+                                            minlength="6"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Password must be at least 6 characters.
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="confirm_password" class="form-label">
+                                            Confirm Password <span class="text-danger">*</span>
+                                        </label>
+                                        <input 
+                                            type="password" 
+                                            class="form-control" 
+                                            id="confirm_password" 
+                                            name="confirm_password" 
+                                            placeholder="Confirm your password"
+                                            minlength="6"
+                                            required
+                                        >
+                                        <div class="invalid-feedback">
+                                            Please confirm your password.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info" role="alert">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Note:</strong> After registration, you will receive an admission number. 
+                                    Please save it as you'll need it to login.
+                                </div>
+                            </div>
+
+                            <!-- Terms and Conditions -->
+                            <div class="mb-4">
+                                <div class="form-check">
+                                    <input 
+                                        class="form-check-input" 
+                                        type="checkbox" 
+                                        id="terms" 
+                                        name="terms"
+                                        required
+                                    >
+                                    <label class="form-check-label" for="terms">
+                                        I agree to the <a href="#" class="text-islamic">Terms and Conditions</a> 
+                                        and <a href="#" class="text-islamic">Privacy Policy</a>
+                                        <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="invalid-feedback">
+                                        You must agree to the terms and conditions.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <button type="submit" class="btn btn-islamic w-100 btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Register Now
+                            </button>
+                        </form>
+                    </div>
+                    <div class="card-footer text-center py-3 bg-light">
+                        <small class="text-muted">
+                            Already have an account? 
+                            <a href="/auth/student-login" class="text-islamic fw-bold text-decoration-none">
+                                Login Here
+                            </a>
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Back to Home -->
+                <div class="text-center mt-4">
+                    <a href="/" class="text-muted text-decoration-none">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+// Password match validation
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = this.value;
+    
+    if (password !== confirmPassword) {
+        this.setCustomValidity('Passwords do not match');
+    } else {
+        this.setCustomValidity('');
+    }
+});
+</script>
+
+<%- include('../layout/footer') %>
