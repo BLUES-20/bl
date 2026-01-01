@@ -1,12 +1,12 @@
 -- ============================================
--- Islamic School Management System - PostgreSQL
+-- Islamic School Management System - Complete Database Schema
 -- ============================================
 
--- 1️⃣ Create database (run this first if not exists)
+-- Create database (run this first if not exists)
 -- CREATE DATABASE school_management;
 -- \c school_management  -- connect to it
 
--- 2️⃣ Create custom types (if not already created)
+-- Create custom types (if not already created)
 DO $$ BEGIN
     CREATE TYPE user_role AS ENUM ('student', 'staff', 'admin');
 EXCEPTION
@@ -19,15 +19,17 @@ EXCEPTION
     WHEN duplicate_object THEN null;
 END $$;
 
--- 3️⃣ Drop triggers if they exist (prevents errors on re-run)
+-- Drop triggers if they exist (prevents errors on re-run)
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 DROP TRIGGER IF EXISTS update_students_updated_at ON students;
 DROP TRIGGER IF EXISTS update_staff_updated_at ON staff;
+DROP TRIGGER IF EXISTS update_results_updated_at ON results;
+DROP TRIGGER IF EXISTS update_contact_messages_updated_at ON contact_messages;
 
--- 4️⃣ Drop tables if you want to start fresh (optional)
--- DROP TABLE IF EXISTS sessions, staff, students, users;
+-- Drop tables if you want to start fresh (optional)
+-- DROP TABLE IF EXISTS sessions, staff, students, users, results, contact_messages;
 
--- 5️⃣ Create Users table
+-- Create Users table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
@@ -40,7 +42,7 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6️⃣ Create Students table
+-- Create Students table
 CREATE TABLE IF NOT EXISTS students (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -59,7 +61,7 @@ CREATE TABLE IF NOT EXISTS students (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7️⃣ Create Staff table
+-- Create Staff table
 CREATE TABLE IF NOT EXISTS staff (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -74,7 +76,7 @@ CREATE TABLE IF NOT EXISTS staff (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8️⃣ Create Sessions table
+-- Create Sessions table
 CREATE TABLE IF NOT EXISTS sessions (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -83,7 +85,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9️⃣ Create trigger function to update updated_at
+-- Create trigger function to update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -92,7 +94,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 10️⃣ Create triggers for updated_at
+-- Create triggers for updated_at
 CREATE TRIGGER update_users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -105,7 +107,7 @@ CREATE TRIGGER update_staff_updated_at
 BEFORE UPDATE ON staff
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- 11️⃣ Create Results table
+-- Create Results table
 CREATE TABLE IF NOT EXISTS results (
     id SERIAL PRIMARY KEY,
     student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
@@ -119,12 +121,32 @@ CREATE TABLE IF NOT EXISTS results (
     UNIQUE(student_id, subject, term, academic_year)
 );
 
--- 12️⃣ Create trigger for results updated_at
+-- Create trigger for results updated_at
 CREATE TRIGGER update_results_updated_at
 BEFORE UPDATE ON results
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- 13️⃣ Insert default admin user (password stored in plain text for now)
+-- Create Contact Messages table
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    subject VARCHAR(500) NOT NULL,
+    message TEXT NOT NULL,
+    status VARCHAR(20) DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'replied', 'archived')),
+    replied_at TIMESTAMP,
+    reply_message TEXT,
+    staff_reply_id INT REFERENCES staff(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create trigger for contact_messages updated_at
+CREATE TRIGGER update_contact_messages_updated_at
+BEFORE UPDATE ON contact_messages
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Insert default admin user (password stored in plain text for now)
 INSERT INTO users (username, email, password, role)
 VALUES ('admin', 'admin@school.com', 'admin123', 'admin')
 ON CONFLICT (username) DO NOTHING;

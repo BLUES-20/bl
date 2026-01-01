@@ -2,11 +2,11 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 const router = express.Router();
-const db = require('../config/db');
+const db = require('../config/db'); // Make sure this exports a 'pg' client connection
 
-// Setup Nodemailer transporter
-
+// =================== Nodemailer Setup ===================
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -15,17 +15,150 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-// Optional: verify connection
 transporter.verify((error, success) => {
     if (error) {
-        console.error('Email setup error:', error);
+        if (error.responseCode === 535) {
+            console.log('❌ Gmail Auth Failed: You need an App Password.');
+            console.log('   1. Enable 2-Step Verification: https://myaccount.google.com/signinoptions/two-step-verification');
+            console.log('   2. Generate App Password: https://myaccount.google.com/apppasswords');
+            console.log('   3. Update EMAIL_PASS in your .env file with the 16-character App Password.');
+        } else {
+            console.error('Email setup error:', error);
+        }
+        console.log('⚠️  Email service unavailable. Server will continue without email functionality.');
     } else {
-        console.log('Gmail transporter ready');
+        console.log('✅ Gmail transporter ready');
     }
 });
 
+// =================== STUDENT LOGIN ===================
+router.get('/student-login', (req, res) => {
+    res.render('auth/student-login', {
+        title: 'Student Login - Islamic School',
+        page: 'student-login'
+    });
+});
 
-/* ================= STUDENT REGISTRATION ================= */
+router.post('/student-login', async (req, res) => {
+    const { admission_number, password } = req.body;
+
+    if (!admission_number || !password) {
+        req.flash('error', 'Please enter admission number and password');
+        return res.redirect('/auth/student-login');
+    }
+
+    try {
+        const query = `
+            SELECT u.password, s.id, s.user_id, s.admission_number, s.first_name, s.last_name, s.email, s.class
+            FROM users u
+            JOIN students s ON u.id = s.user_id
+            WHERE s.admission_number = $1 AND u.role = 'student'
+        `;
+        const { rows } = await db.query(query, [admission_number]);
+
+        if (!rows || rows.length === 0) {
+            req.flash('error', 'Invalid admission number or password');
+            return res.redirect('/auth/student-login');
+        }
+
+        const student = rows[0];
+        
+        // Check password (handle plain text for seed data, hashed for others)
+        let match = false;
+        if (student.password === password) {
+            match = true;
+        } else {
+            match = await bcrypt.compare(password, student.password);
+        }
+
+        if (!match) {
+            req.flash('error', 'Invalid admission number or password');
+            return res.redirect('/auth/student-login');
+        }
+
+        req.session.student = {
+            id: student.id,
+            user_id: student.user_id,
+            name: student.first_name + ' ' + student.last_name,
+            admission_number: student.admission_number,
+            email: student.email,
+            class: student.class
+        };
+
+        req.flash('success', `Welcome back, ${student.first_name}!`);
+        res.redirect('/student/dashboard');
+
+    } catch (err) {
+        console.error('Student login error:', err);
+        req.flash('error', 'Login failed. Please try again.');
+        res.redirect('/auth/student-login');
+    }
+});
+
+// =================== STAFF LOGIN ===================
+router.get('/staff-login', (req, res) => {
+    res.render('auth/staff-login', {
+        title: 'Staff Login - Islamic School',
+        page: 'staff-login'
+    });
+});
+
+router.post('/staff-login', async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        req.flash('error', 'Please enter email and password');
+        return res.redirect('/auth/staff-login');
+    }
+
+    try {
+        const query = `
+            SELECT u.id as user_id, u.password, u.role, u.email, s.id as staff_id, s.first_name, s.last_name, s.position
+            FROM users u
+            LEFT JOIN staff s ON u.id = s.user_id
+            WHERE u.email = $1 AND u.role IN ('staff', 'admin')
+        `;
+        const { rows } = await db.query(query, [email]);
+
+        if (!rows || rows.length === 0) {
+            req.flash('error', 'Invalid email or password');
+            return res.redirect('/auth/staff-login');
+        }
+
+        const user = rows[0];
+        
+        // Check password (handle plain text for seed admin, hashed for others)
+        let match = false;
+        if (user.password === password) {
+            match = true;
+        } else {
+            match = await bcrypt.compare(password, user.password);
+        }
+
+        if (!match) {
+            req.flash('error', 'Invalid email or password');
+            return res.redirect('/auth/staff-login');
+        }
+
+        req.session.staff = {
+            id: user.staff_id || user.user_id,
+            user_id: user.user_id,
+            name: user.first_name ? (user.first_name + ' ' + user.last_name) : 'Administrator',
+            email: user.email,
+            position: user.position || 'Admin'
+        };
+
+        req.flash('success', `Welcome back, ${req.session.staff.name}!`);
+        res.redirect('/staff/dashboard');
+
+    } catch (err) {
+        console.error('Staff login error:', err);
+        req.flash('error', 'Login failed. Please try again.');
+        res.redirect('/auth/staff-login');
+    }
+});
+
+// =================== STUDENT REGISTRATION ===================
 router.get('/student-register', (req, res) => {
     res.render('auth/student-register', {
         title: 'Student Registration - Islamic School',
@@ -34,21 +167,21 @@ router.get('/student-register', (req, res) => {
 });
 
 router.post('/student-register', async (req, res) => {
-    const {
-        full_name,
-        email,
-        password,
-        confirm_password,
-        class_name,
-        date_of_birth,
-        gender,
-        parent_name,
-        parent_phone,
-        address
+    const { 
+        full_name, 
+        email, 
+        date_of_birth, 
+        gender, 
+        class_name, 
+        parent_name, 
+        parent_phone, 
+        address, 
+        password, 
+        confirm_password 
     } = req.body;
 
     // Validation
-    if (!full_name || !email || !password) {
+    if (!full_name || !email || !password || !confirm_password) {
         req.flash('error', 'Please fill in all required fields');
         return res.redirect('/auth/student-register');
     }
@@ -64,228 +197,255 @@ router.post('/student-register', async (req, res) => {
     }
 
     try {
-        // Hash password
+        // Check if email already exists
+        const existingUser = await db.query('SELECT id FROM users WHERE email = $1', [email]);
+        if (existingUser.rows.length > 0) {
+            req.flash('error', 'Email already registered');
+            return res.redirect('/auth/student-register');
+        }
+
+        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Generate unique admission number
-        const admission_number = `STU${new Date().getFullYear()}${String(Date.now()).slice(-6)}`;
+        // Generate admission number
+        const year = new Date().getFullYear();
+        const countResult = await db.query('SELECT COUNT(*) FROM students');
+        const count = parseInt(countResult.rows[0].count) + 1;
+        const admission_number = `STU${year}${count.toString().padStart(3, '0')}`;
 
-        // Insert into users table
-        db.query(
-            'INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-            [email, email, hashedPassword, 'student'],
-            (err, userResult) => {
-                if (err) {
-                    console.error('User creation error:', err);
-                    req.flash('error', 'Email already exists or registration failed');
-                    return res.redirect('/auth/student-register');
-                }
+        // Split full name into first and last name
+        const nameParts = full_name.trim().split(' ');
+        const first_name = nameParts[0];
+        const last_name = nameParts.slice(1).join(' ') || nameParts[0];
 
-                const userId = userResult.insertId;
-
-                // Insert into students table
-                db.query(
-                    `INSERT INTO students 
-                    (user_id, admission_number, first_name, last_name, email, class, date_of_birth, gender, parent_name, parent_phone, address)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        userId,
-                        admission_number,
-                        full_name.split(' ')[0] || full_name,
-                        full_name.split(' ').slice(1).join(' ') || '',
-                        email,
-                        class_name || 'Not Assigned',
-                        date_of_birth || null,
-                        gender || 'other',
-                        parent_name || '',
-                        parent_phone || '',
-                        address || ''
-                    ],
-                    (err) => {
-                        if (err) {
-                            console.error('Student record error:', err);
-                            req.flash('error', 'Registration failed. Please try again');
-                            return res.redirect('/auth/student-register');
-                        }
-
-                        // Send email with admission number
-                        const mailOptions = {
-                            from: '"Islamic School" <noreply@islamicschool.com>',
-                            to: email,
-                            subject: 'Welcome to Islamic School - Your Admission Details',
-                            html: `
-                                <h2>Welcome to Islamic School!</h2>
-                                <p>Dear ${full_name},</p>
-                                <p>Your registration has been successful.</p>
-                                <p><strong>Your Admission Number: ${admission_number}</strong></p>
-                                <p>Please use this admission number along with your password to login to your student portal.</p>
-                                <p>Best regards,<br>Islamic School Administration</p>
-                            `
-                        };
-
-                        transporter.sendMail(mailOptions, (error, info) => {
-                            if (error) {
-                                console.error('Email send error:', error);
-                            } else {
-                                console.log('Email sent:', info.messageId);
-                                console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
-                            }
-                        });
-
-                        req.flash('success', `Registration successful! Your admission number is: ${admission_number}. Please check your email for confirmation.`);
-                        res.redirect('/auth/student-login');
-                    }
-                );
-            }
+        // Create user first
+        const userResult = await db.query(
+            'INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id',
+            [email, email, hashedPassword, 'student']
         );
-    } catch (error) {
-        console.error('Registration error:', error);
-        req.flash('error', 'An error occurred during registration');
+        const user_id = userResult.rows[0].id;
+
+        // Create student record
+        await db.query(
+            `INSERT INTO students (user_id, admission_number, first_name, last_name, email, date_of_birth, gender, class, parent_name, parent_phone, address) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [user_id, admission_number, first_name, last_name, email, date_of_birth || null, gender || null, class_name || null, parent_name || null, parent_phone || null, address || null]
+        );
+
+        // Send admission number email
+        const mailOptions = {
+            to: email,
+            from: process.env.EMAIL_USER,
+            subject: 'Welcome to Islamic School - Your Admission Number',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #1a5f3f; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                        <h2 style="margin: 0;">Islamic School Management System</h2>
+                        <p style="margin: 5px 0 0 0;">Welcome to Our Community</p>
+                    </div>
+                    <div style="background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 5px 5px;">
+                        <p>Dear <strong>${first_name} ${last_name}</strong>,</p>
+                        
+                        <p>Congratulations! Your registration with Islamic School has been successfully completed.</p>
+                        
+                        <div style="background-color: #e8f5e9; border-left: 4px solid #1a5f3f; padding: 15px; margin: 20px 0; border-radius: 3px;">
+                            <p style="margin: 0 0 10px 0;"><strong>Your Admission Details:</strong></p>
+                            <p style="margin: 5px 0;"><strong>Admission Number:</strong> <span style="font-size: 18px; color: #1a5f3f; font-weight: bold;">${admission_number}</span></p>
+                            <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
+                            <p style="margin: 5px 0;"><strong>Full Name:</strong> ${first_name} ${last_name}</p>
+                        </div>
+                        
+                        <p><strong>Important:</strong> Please save your admission number. You will need it to log in to the student portal.</p>
+                        
+                        <div style="background-color: #fff3cd; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0; border-radius: 3px;">
+                            <p style="margin: 0;"><strong>Login Instructions:</strong></p>
+                            <ol style="margin: 10px 0 0 0; padding-left: 20px;">
+                                <li>Visit: <a href="${process.env.APP_URL}/auth/student-login" style="color: #1a5f3f;">Student Login Portal</a></li>
+                                <li>Enter your Admission Number: <strong>${admission_number}</strong></li>
+                                <li>Enter your password</li>
+                                <li>Click Login</li>
+                            </ol>
+                        </div>
+                        
+                        <p>If you have any questions or need assistance, please contact the school administration.</p>
+                        
+                        <p>Best regards,<br><strong>Islamic School Management System</strong></p>
+                    </div>
+                    <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px;">
+                        <p style="margin: 0;">This is an automated email. Please do not reply to this message.</p>
+                    </div>
+                </div>
+            `
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log(`✅ Admission email sent to ${email}`);
+        } catch (emailErr) {
+            console.error('Email sending error:', emailErr);
+            // Don't fail registration if email fails, just log it
+        }
+
+        req.flash('success', `Registration successful! Your admission number is: ${admission_number}. A confirmation email has been sent to ${email}.`);
+        res.redirect('/auth/student-login');
+
+    } catch (err) {
+        console.error('Registration error:', err);
+        req.flash('error', 'Registration failed. Please try again.');
         res.redirect('/auth/student-register');
     }
 });
 
-/* ================= STUDENT LOGIN ================= */
-router.get('/student-login', (req, res) => {
-    res.render('auth/student-login', {
-        title: 'Student Login - Islamic School',
-        page: 'student-login'
+// =================== FORGOT PASSWORD ===================
+router.get('/forgot-password', (req, res) => {
+    res.render('auth/forgot-password', {
+        title: 'Forgot Password - Islamic School',
+        page: 'forgot-password'
     });
 });
 
-router.post('/student-login', (req, res) => {
-    const { admission_number, password } = req.body;
-
-    if (!admission_number || !password) {
-        req.flash('error', 'Please enter admission number and password');
-        return res.redirect('/auth/student-login');
-    }
-
-    db.query(
-        `SELECT u.password, s.id, s.user_id, s.admission_number, s.first_name, s.last_name, s.email, s.class
-         FROM users u
-         JOIN students s ON u.id = s.user_id
-         WHERE s.admission_number = ? AND u.role = 'student'`,
-        [admission_number],
-        async (err, results) => {
-            if (err) {
-                console.error('Database error during student login:', err);
-                req.flash('error', 'Login failed. Please try again');
-                return res.redirect('/auth/student-login');
-            }
-
-            if (!results || results.length === 0) {
-                req.flash('error', 'Invalid admission number or password');
-                return res.redirect('/auth/student-login');
-            }
-
-            const student = results[0];
-
-            try {
-                const match = await bcrypt.compare(password, student.password);
-
-                if (!match) {
-                    req.flash('error', 'Invalid admission number or password');
-                    return res.redirect('/auth/student-login');
-                }
-
-                req.session.student = {
-                    id: student.id,
-                    user_id: student.user_id,
-                    name: student.first_name + ' ' + student.last_name,
-                    admission_number: student.admission_number,
-                    email: student.email,
-                    class: student.class
-                };
-
-                req.flash('success', `Welcome back, ${student.first_name}!`);
-                res.redirect('/student/dashboard');
-            } catch (error) {
-                console.error('Password comparison error:', error);
-                req.flash('error', 'Login failed. Please try again');
-                res.redirect('/auth/student-login');
-            }
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+    try {
+        const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+        if (result.rows.length === 0) {
+            req.flash('error', 'No account with that email exists.');
+            return res.redirect('/auth/forgot-password');
         }
-    );
-});
 
-/* ================= STAFF LOGIN ================= */
-router.get('/staff-login', (req, res) => {
-    res.render('auth/staff-login', {
-        title: 'Staff Login - Islamic School',
-        page: 'staff-login'
-    });
-});
+        // Generate token
+        const token = crypto.randomBytes(20).toString('hex');
+        const expires = new Date(Date.now() + 3600000); // 1 hour from now
 
-router.post('/staff-login', (req, res) => {
-    const { email, password } = req.body;
+        await db.query(
+            'UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE email = $3',
+            [token, expires, email]
+        );
 
-    if (!email || !password) {
-        req.flash('error', 'Please enter email and password');
-        return res.redirect('/auth/staff-login');
+        // Use APP_URL from .env for mobile compatibility
+        const appUrl = process.env.APP_URL || `http://${req.headers.host}`;
+        const resetLink = `${appUrl}/auth/reset-password/${token}`;
+
+        const mailOptions = {
+            to: email,
+            from: process.env.EMAIL_USER,
+            subject: 'Password Reset Request - Islamic School',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                    <div style="background-color: #1a5f3f; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                        <h2 style="margin: 0;">Islamic School Management System</h2>
+                        <p style="margin: 5px 0 0 0;">Password Reset Request</p>
+                    </div>
+                    <div style="background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 5px 5px;">
+                        <p>Hello,</p>
+                        
+                        <p>You have requested to reset your password. Click the button below to create a new password.</p>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${resetLink}" style="background-color: #1a5f3f; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                                Reset Password
+                            </a>
+                        </div>
+                        
+                        <p>Or copy and paste this link into your browser:</p>
+                        <p style="word-break: break-all; background-color: #f0f0f0; padding: 10px; border-radius: 3px;">
+                            <a href="${resetLink}" style="color: #1a5f3f;">${resetLink}</a>
+                        </p>
+                        
+                        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+                        
+                        <p><strong>⏰ Important:</strong> This link will expire in <strong>1 hour</strong>.</p>
+                        
+                        <p>If you did not request this password reset, please ignore this email and your password will remain unchanged.</p>
+                        
+                        <p style="color: #666; font-size: 12px; margin-top: 20px;">
+                            This email was sent from Islamic School Management System.<br>
+                            Do not reply to this email.
+                        </p>
+                    </div>
+                    <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px;">
+                        <p style="margin: 0;">© 2025 Islamic School Management System. All rights reserved.</p>
+                    </div>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptions);
+        console.log(`✅ Password reset email sent to ${email}`);
+        req.flash('success', 'An e-mail has been sent to ' + email + ' with a password reset link. The link will expire in 1 hour.');
+        res.redirect('/auth/forgot-password');
+
+    } catch (err) {
+        console.error('Forgot password error:', err);
+        req.flash('error', 'Error sending email. Please try again.');
+        res.redirect('/auth/forgot-password');
     }
-
-    db.query(
-        `SELECT u.password, s.id, s.user_id, s.first_name, s.last_name, s.email, s.position
-         FROM users u
-         JOIN staff s ON u.id = s.user_id
-         WHERE u.email = ? AND u.role = 'staff'`,
-        [email],
-        async (err, results) => {
-            if (err) {
-                console.error('Database error during staff login:', err);
-                req.flash('error', 'Login failed. Please try again');
-                return res.redirect('/auth/staff-login');
-            }
-
-            if (!results || results.length === 0) {
-                req.flash('error', 'Invalid email or password');
-                return res.redirect('/auth/staff-login');
-            }
-
-            const staff = results[0];
-
-            try {
-                const match = await bcrypt.compare(password, staff.password);
-
-                if (!match) {
-                    req.flash('error', 'Invalid email or password');
-                    return res.redirect('/auth/staff-login');
-                }
-
-                req.session.staff = {
-                    id: staff.id,
-                    user_id: staff.user_id,
-                    name: staff.first_name + ' ' + staff.last_name,
-                    email: staff.email,
-                    position: staff.position
-                };
-
-                req.flash('success', `Welcome back, ${staff.first_name}!`);
-                res.redirect('/staff/dashboard');
-            } catch (error) {
-                console.error('Password comparison error:', error);
-                req.flash('error', 'Login failed. Please try again');
-                res.redirect('/auth/staff-login');
-            }
-        }
-    );
 });
 
-/* ================= LOGOUT ================= */
+router.get('/reset-password/:token', async (req, res) => {
+    try {
+        const result = await db.query(
+            'SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > $2',
+            [req.params.token, new Date()]
+        );
+
+        if (result.rows.length === 0) {
+            req.flash('error', 'Password reset token is invalid or has expired.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        res.render('auth/reset-password', {
+            title: 'Reset Password',
+            page: 'reset-password',
+            token: req.params.token
+        });
+    } catch (err) {
+        console.error('Reset token check error:', err);
+        res.redirect('/auth/forgot-password');
+    }
+});
+
+router.post('/reset-password/:token', async (req, res) => {
+    try {
+        const { password, confirm_password } = req.body;
+        if (password !== confirm_password) {
+            req.flash('error', 'Passwords do not match.');
+            return res.redirect('back');
+        }
+
+        const result = await db.query(
+            'SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > $2',
+            [req.params.token, new Date()]
+        );
+
+        if (result.rows.length === 0) {
+            req.flash('error', 'Password reset token is invalid or has expired.');
+            return res.redirect('/auth/forgot-password');
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await db.query(
+            'UPDATE users SET password = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2',
+            [hashedPassword, result.rows[0].id]
+        );
+
+        req.flash('success', 'Success! Your password has been changed.');
+        res.redirect('/auth/student-login');
+
+    } catch (err) {
+        console.error('Reset password error:', err);
+        req.flash('error', 'Error resetting password.');
+        res.redirect('back');
+    }
+});
+
+// =================== LOGOUT ===================
 router.get('/logout', (req, res) => {
-    const isStaff = req.session.staff ? true : false;
-
-    req.flash('success', 'Logged out successfully');
-
-    req.session.destroy((err) => {
+    const isStaff = !!req.session.staff;
+    req.session.destroy(err => {
         if (err) console.error('Logout error:', err);
-
-        if (isStaff) {
-            res.redirect('/auth/staff-login');
-        } else {
-            res.redirect('/auth/student-login');
-        }
+        // Cannot use flash after session is destroyed, so we redirect with query param
+        res.redirect(isStaff ? '/auth/staff-login?logout=1' : '/auth/student-login?logout=1');
     });
 });
 

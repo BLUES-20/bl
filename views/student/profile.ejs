@@ -1,0 +1,84 @@
+<%- include('../layout/header') %>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 class="fw-bold">
+                        <i class="fas fa-user-circle me-2"></i>My Profile
+                    </h2>
+                    <a href="/student/dashboard" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card card-islamic shadow-lg">
+                    <div class="card-header py-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-user me-2"></i>Profile Information
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <p class="mb-1"><strong>Full Name:</strong></p>
+                                <p class="text-muted"><%= student.name %></p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="mb-1"><strong>Admission Number:</strong></p>
+                                <p class="text-muted"><%= student.admission_number %></p>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <p class="mb-1"><strong>Email:</strong></p>
+                                <p class="text-muted"><%= student.email %></p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p class="mb-1"><strong>Class:</strong></p>
+                                <p class="text-muted"><%= student.class || 'N/A' %></p>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Profile Update Feature Coming Soon!</strong>
+                            <p class="mb-0 mt-2">
+                                The ability to update your profile information will be available soon. 
+                                For now, please contact your school administration for any changes.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card card-islamic shadow-lg">
+                    <div class="card-header py-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-lock me-2"></i>Account
+                        </h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <a href="/auth/forgot-password" class="btn btn-islamic w-100 mb-3">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                        <a href="/auth/logout" class="btn btn-danger w-100">
+                            <i class="fas fa-sign-out-alt me-2"></i>Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<%- include('../layout/footer') %>

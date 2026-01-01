@@ -5,13 +5,22 @@ const session = require('express-session');
 const flash = require('connect-flash');
 const path = require('path');
 const db = require('./config/db');
+const initDatabase = require('./init-db');
 
 const app = express();
+
+// Initialize database tables on startup
+initDatabase();
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Trust proxy for Render deployment (HTTPS)
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
 
 // Session configuration
 app.use(session({
@@ -19,7 +28,7 @@ app.use(session({
     resave: false,
     saveUninitialized: false,
     cookie: { 
-        secure: false, // Set to true if using HTTPS
+        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
         maxAge: 1000 * 60 * 60 * 24 // 24 hours
     }
 }));
@@ -48,11 +57,13 @@ const indexRoutes = require('./routes/index');
 const authRoutes = require('./routes/auth');
 const staffRoutes = require('./routes/staff');
 const studentRoutes = require('./routes/student');
+const contactRoutes = require('./routes/contact');
 
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/staff', staffRoutes);
 app.use('/student', studentRoutes);
+app.use('/', contactRoutes);
 
 // 404 Error Handler
 app.use((req, res) => {

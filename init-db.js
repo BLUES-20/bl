@@ -1,0 +1,165 @@
+// init-db.js - Automatically initialize database tables
+const db = require('./config/db');
+
+const initDatabase = async () => {
+    console.log('🔧 Initializing database...');
+    
+    try {
+        // Create custom types (if not already created)
+        await db.query(`
+            DO $$ BEGIN
+                CREATE TYPE user_role AS ENUM ('student', 'staff', 'admin');
+            EXCEPTION
+                WHEN duplicate_object THEN null;
+            END $$;
+        `);
+        
+        await db.query(`
+            DO $$ BEGIN
+                CREATE TYPE gender_type AS ENUM ('male', 'female', 'other');
+            EXCEPTION
+                WHEN duplicate_object THEN null;
+            END $$;
+        `);
+
+        // Create Users table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                role user_role DEFAULT 'student',
+                reset_password_token VARCHAR(255),
+                reset_password_expires TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create Students table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS students (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                admission_number VARCHAR(50) UNIQUE NOT NULL,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                date_of_birth DATE,
+                gender gender_type,
+                class VARCHAR(50),
+                parent_name VARCHAR(100),
+                parent_phone VARCHAR(20),
+                parent_email VARCHAR(255),
+                address TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create Staff table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS staff (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                position VARCHAR(100) NOT NULL,
+                department VARCHAR(100),
+                phone VARCHAR(20),
+                hire_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create Sessions table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                session_token VARCHAR(255) UNIQUE NOT NULL,
+                expires_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create Results table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS results (
+                id SERIAL PRIMARY KEY,
+                student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                subject VARCHAR(100) NOT NULL,
+                score DECIMAL(5,2) NOT NULL CHECK (score >= 0 AND score <= 100),
+                grade CHAR(1) NOT NULL,
+                term VARCHAR(20) NOT NULL,
+                academic_year VARCHAR(20) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(student_id, subject, term, academic_year)
+            );
+        `);
+
+        // Create Contact Messages table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS contact_messages (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                subject VARCHAR(500) NOT NULL,
+                message TEXT NOT NULL,
+                status VARCHAR(20) DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'replied', 'archived')),
+                replied_at TIMESTAMP,
+                reply_message TEXT,
+                staff_reply_id INT REFERENCES staff(id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create Announcements table
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS announcements (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                author_id INT REFERENCES users(id),
+                target_audience VARCHAR(50) DEFAULT 'all',
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // Create trigger function to update updated_at
+        await db.query(`
+            CREATE OR REPLACE FUNCTION update_updated_at_column()
+            RETURNS TRIGGER AS $$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+        `);
+
+        // Insert default admin user if not exists
+        const adminExists = await db.query("SELECT id FROM users WHERE username = 'admin'");
+        if (adminExists.rows.length === 0) {
+            await db.query(`
+                INSERT INTO users (username, email, password, role)
+                VALUES ('admin', 'admin@school.com', 'admin123', 'admin')
+            `);
+            console.log('✅ Default admin user created (admin@school.com / admin123)');
+        }
+
+        console.log('✅ Database tables initialized successfully!');
+        
+    } catch (err) {
+        console.error('❌ Database initialization error:', err.message);
+        // Don't throw - let the app continue even if some tables already exist
+    }
+};
+
+module.exports = initDatabase;

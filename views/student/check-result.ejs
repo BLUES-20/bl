@@ -1,0 +1,128 @@
+<%- include('../layout/header') %>
+
+<section class="py-5">
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-lg-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h2 class="fw-bold">
+                        <i class="fas fa-chart-bar me-2"></i>Check Results
+                    </h2>
+                    <a href="/student/dashboard" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card card-islamic shadow-lg">
+                    <div class="card-body p-4">
+                        <!-- Search Form -->
+                        <form action="/student/check-result" method="POST" class="row g-3 mb-4">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">Term</label>
+                                <select name="term" class="form-select" required>
+                                    <option value="1st Term" <%= typeof term !== 'undefined' && term === '1st Term' ? 'selected' : '' %>>1st Term</option>
+                                    <option value="2nd Term" <%= typeof term !== 'undefined' && term === '2nd Term' ? 'selected' : '' %>>2nd Term</option>
+                                    <option value="3rd Term" <%= typeof term !== 'undefined' && term === '3rd Term' ? 'selected' : '' %>>3rd Term</option>
+                                </select>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">Academic Year</label>
+                                <input type="text" name="academic_year" class="form-control" value="<%= typeof academic_year !== 'undefined' ? academic_year : '2024/2025' %>" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-search me-1"></i>Check
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Results Display -->
+                        <% if (results && results.length > 0) { %>
+                            <div class="text-center mb-4">
+                                <h4 class="fw-bold text-success">
+                                    <i class="fas fa-trophy me-2"></i>Your Results
+                                </h4>
+                                <p class="text-muted mb-0">
+                                    <%= term %> - <%= academic_year %>
+                                </p>
+                            </div>
+
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-hover">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Subject</th>
+                                            <th class="text-center">Score</th>
+                                            <th class="text-center">Grade</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% results.forEach(result => { %>
+                                            <tr>
+                                                <td class="fw-bold"><%= result.subject %></td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-info fs-6"><%= result.score %></span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-<%= result.grade === 'A' ? 'success' : (result.grade === 'F' ? 'danger' : 'secondary') %> fs-5">
+                                                        <%= result.grade %>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <% }); %>
+
+                                        <!-- TOTAL ROW -->
+                                        <tr class="table-success border-top border-dark">
+                                            <td class="fw-bold text-end">AVERAGE SCORE (%)</td>
+                                            <td class="text-center fw-bold fs-5">
+                                                <%= results.length > 0 ? (results.reduce((sum, result) => sum + parseFloat(result.score), 0) / results.length).toFixed(2) : '0.00' %>%
+                                            </td>
+                                            <td></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="text-center mt-4">
+                                <div class="alert alert-success" role="alert">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    <strong>Great job!</strong> Keep up the excellent work.
+                                </div>
+                                <a href="/student/download-result/<%= encodeURIComponent(term) %>/<%= encodeURIComponent(academic_year) %>" class="btn btn-primary btn-lg mt-3">
+                                    <i class="fas fa-download me-2"></i>Download PDF Result
+                                </a>
+                            </div>
+                        <% } else if (typeof term !== 'undefined' && typeof academic_year !== 'undefined') { %>
+                            <div class="alert alert-warning text-center" role="alert">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>No Results Found</strong>
+                                <p class="mb-0 mt-2">
+                                    No results are available for <%= term %> - <%= academic_year %>.
+                                    Please check with your teacher or try a different term/year.
+                                </p>
+                            </div>
+
+                            <div class="text-center py-4">
+                                <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                                <p class="text-muted">No results to display</p>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center py-5">
+                                <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                                <h5 class="text-muted">Select Term and Year to View Results</h5>
+                                <p class="text-muted">Choose your academic term and year above to check your results.</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<%- include('../layout/footer') %>

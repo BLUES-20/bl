@@ -1,0 +1,263 @@
+<%- include('../layout/header') %>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-upload me-2"></i>Upload Student Results</h4>
+                    <small class="text-white-50">Upload multiple subjects for a student</small>
+                </div>
+                <div class="card-body p-4">
+                    <form action="/staff/upload-result" method="POST" id="resultForm">
+
+                        <!-- Student Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Student Admission Number</label>
+                                <input type="text" name="admission_number" class="form-control" required placeholder="e.g. STU2025001" value="<%= (typeof query !== 'undefined' && query.admission_number) ? query.admission_number : '' %>">
+                                <div class="form-text">Enter the exact admission number of the student.</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Class</label>
+                                <select name="class_name" id="classSelect" class="form-select" required>
+                                    <option value="">Select Class...</option>
+                                    <option value="PRELIMINARY 2" <%= (typeof query !== 'undefined' && query.class_name === 'PRELIMINARY 2') ? 'selected' : '' %>>PRELIMINARY 2</option>
+                                    <option value="PRELIMINARY 3" <%= (typeof query !== 'undefined' && query.class_name === 'PRELIMINARY 3') ? 'selected' : '' %>>PRELIMINARY 3</option>
+                                    <option value="ALIF CLASS" <%= (typeof query !== 'undefined' && query.class_name === 'ALIF CLASS') ? 'selected' : '' %>>ALIF CLASS</option>
+                                    <option value="BA CLASS" <%= (typeof query !== 'undefined' && query.class_name === 'BA CLASS') ? 'selected' : '' %>>BA CLASS</option>
+                                    <option value="TA CLASS" <%= (typeof query !== 'undefined' && query.class_name === 'TA CLASS') ? 'selected' : '' %>>TA CLASS</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Academic Information -->
+                        <div class="row mb-4">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Term</label>
+                                <select name="term" class="form-select" required>
+                                    <option value="1st Term" <%= (typeof query !== 'undefined' && query.term === '1st Term') ? 'selected' : '' %>>1st Term</option>
+                                    <option value="2nd Term" <%= (typeof query !== 'undefined' && query.term === '2nd Term') ? 'selected' : '' %>>2nd Term</option>
+                                    <option value="3rd Term" <%= (typeof query !== 'undefined' && query.term === '3rd Term') ? 'selected' : '' %>>3rd Term</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Academic Year</label>
+                                <input type="text" name="academic_year" class="form-control" value="<%= (typeof query !== 'undefined' && query.academic_year) ? query.academic_year : '2024/2025' %>" required>
+                            </div>
+                        </div>
+
+                        <!-- Subjects Section -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 class="mb-0"><i class="fas fa-book me-2"></i>Subjects & Scores</h5>
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addSubjectBtn">
+                                    <i class="fas fa-plus me-1"></i>Add Subject
+                                </button>
+                            </div>
+
+<div id="subjectsContainer" data-initial-count="<%= (typeof uploadedSubjects !== 'undefined' && uploadedSubjects.length > 0) ? uploadedSubjects.length : 1 %>">
+                                <% if (typeof uploadedSubjects !== 'undefined' && uploadedSubjects.length > 0) { %>
+                                    <% uploadedSubjects.forEach((subject, index) => { %>
+                                        <!-- Existing Subject Row -->
+                                        <div class="subject-row border rounded p-3 mb-3 bg-light">
+                                            <div class="row align-items-end">
+                                                <div class="col-md-4 mb-2">
+                                                    <label class="form-label fw-bold">Subject Name</label>
+                                                    <input type="text" name="subjects[]" class="form-control subject-input" placeholder="e.g. Mathematics, English, Science" value="<%= subject.subject %>" required>
+                                                    <!-- Hidden field to track existing subjects -->
+                                                    <input type="hidden" name="existing_subjects[]" value="<%= subject.subject %>">
+                                                </div>
+                                                <div class="col-md-4 mb-2">
+                                                    <label class="form-label fw-bold">Score (0-100)</label>
+                                                    <input type="number" name="scores[]" class="form-control score-input" min="0" max="100" step="0.01" placeholder="85.5" value="<%= subject.score %>" required>
+                                                </div>
+                                                <div class="col-md-2 mb-2">
+                                                    <label class="form-label fw-bold">Delete</label>
+                                                    <div class="form-check">
+                                                        <input type="checkbox" name="delete_subjects[]" value="<%= subject.subject %>" class="form-check-input delete-checkbox" id="delete_<%= index %>">
+                                                        <label class="form-check-label text-danger" for="delete_<%= index %>">
+                                                            <small>Mark for deletion</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2 mb-2">
+                                                    <button type="button" class="btn btn-outline-danger btn-sm remove-subject-btn">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <% if (index === 0) { %>
+                                                <div class="mt-2">
+                                                    <small class="text-info"><i class="fas fa-info-circle me-1"></i>Edit existing results, mark subjects for deletion, or add new subjects below</small>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                    <% }); %>
+                                <% } else { %>
+                                    <!-- Default Empty Subject Row -->
+                                    <div class="subject-row border rounded p-3 mb-3 bg-light">
+                                        <div class="row align-items-end">
+                                            <div class="col-md-5 mb-2">
+                                                <label class="form-label fw-bold">Subject Name</label>
+                                                <input type="text" name="subjects[]" class="form-control subject-input" placeholder="e.g. Mathematics, English, Science" required>
+                                            </div>
+                                            <div class="col-md-5 mb-2">
+                                                <label class="form-label fw-bold">Score (0-100)</label>
+                                                <input type="number" name="scores[]" class="form-control score-input" min="0" max="100" step="0.01" placeholder="85.5" required>
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <button type="button" class="btn btn-outline-danger btn-sm remove-subject-btn">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% } %>
+                            </div>
+
+                            <div class="text-muted small">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Grades are automatically calculated: A (70+), B (60+), C (50+), D (45+), E (40+), F (<40)
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-upload me-2"></i>Upload All Results
+                            </button>
+                            <a href="/staff/dashboard" class="btn btn-outline-secondary">Back to Dashboard</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const subjectsContainer = document.getElementById('subjectsContainer');
+    const addSubjectBtn = document.getElementById('addSubjectBtn');
+    let subjectCount = parseInt(subjectsContainer.getAttribute('data-initial-count')) || 1;
+
+    // Function to create a new subject row
+    function createSubjectRow() {
+        const row = document.createElement('div');
+        row.className = 'subject-row border rounded p-3 mb-3 bg-light';
+        row.innerHTML = `
+            <div class="row align-items-end">
+                <div class="col-md-5 mb-2">
+                    <label class="form-label fw-bold">Subject Name</label>
+                    <input type="text" name="subjects[]" class="form-control subject-input" placeholder="e.g. Mathematics, English, Science" required>
+                </div>
+                <div class="col-md-5 mb-2">
+                    <label class="form-label fw-bold">Score (0-100)</label>
+                    <input type="number" name="scores[]" class="form-control score-input" min="0" max="100" step="0.01" placeholder="85.5" required>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm remove-subject-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        return row;
+    }
+
+    // Add new subject row
+    addSubjectBtn.addEventListener('click', function() {
+        const newRow = createSubjectRow();
+        subjectsContainer.appendChild(newRow);
+        subjectCount++;
+
+        // Update remove buttons visibility
+        updateRemoveButtons();
+    });
+
+    // Remove subject row
+    subjectsContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-subject-btn') || e.target.closest('.remove-subject-btn')) {
+            if (subjectCount > 1) {
+                e.target.closest('.subject-row').remove();
+                subjectCount--;
+
+                // Update remove buttons visibility
+                updateRemoveButtons();
+            } else {
+                alert('You must have at least one subject.');
+            }
+        }
+    });
+
+    // Update remove buttons visibility
+    function updateRemoveButtons() {
+        const removeButtons = document.querySelectorAll('.remove-subject-btn');
+        removeButtons.forEach(btn => {
+            btn.style.display = subjectCount > 1 ? 'block' : 'none';
+        });
+    }
+
+    // Initialize remove buttons
+    updateRemoveButtons();
+
+    // Form validation
+    document.getElementById('resultForm').addEventListener('submit', function(e) {
+        const subjects = document.querySelectorAll('input[name="subjects[]"]');
+        const scores = document.querySelectorAll('input[name="scores[]"]');
+        let isValid = true;
+
+        // Check if at least one subject is filled
+        let hasValidSubject = false;
+        subjects.forEach(subject => {
+            if (subject.value.trim() !== '') {
+                hasValidSubject = true;
+            }
+        });
+
+        if (!hasValidSubject) {
+            e.preventDefault();
+            alert('Please enter at least one subject.');
+            return false;
+        }
+
+        // Validate score ranges
+        scores.forEach(score => {
+            const value = parseFloat(score.value);
+            if (score.value !== '' && (isNaN(value) || value < 0 || value > 100)) {
+                isValid = false;
+                score.classList.add('is-invalid');
+            } else {
+                score.classList.remove('is-invalid');
+            }
+        });
+
+        if (!isValid) {
+            e.preventDefault();
+            alert('Please ensure all scores are between 0 and 100.');
+            return false;
+        }
+    });
+});
+</script>
+
+<style>
+.subject-row {
+    transition: all 0.3s ease;
+}
+.subject-row:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.remove-subject-btn {
+    min-width: 40px;
+}
+@media (max-width: 768px) {
+    .subject-row .col-md-5 {
+        margin-bottom: 10px !important;
+    }
+}
+</style>
+
+<%- include('../layout/footer') %>

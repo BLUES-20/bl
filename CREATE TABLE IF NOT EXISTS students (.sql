@@ -7,17 +7,8 @@
 -- \c school_management  -- connect to it
 
 -- 2️⃣ Create custom types (if not already created)
-DO $$ BEGIN
-    CREATE TYPE user_role AS ENUM ('student', 'staff', 'admin');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE gender_type AS ENUM ('male', 'female', 'other');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+CREATE TYPE IF NOT EXISTS user_role AS ENUM ('student', 'staff', 'admin');
+CREATE TYPE IF NOT EXISTS gender_type AS ENUM ('male', 'female', 'other');
 
 -- 3️⃣ Drop triggers if they exist (prevents errors on re-run)
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
@@ -34,8 +25,6 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     role user_role DEFAULT 'student',
-    reset_password_token VARCHAR(255),
-    reset_password_expires TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -105,26 +94,7 @@ CREATE TRIGGER update_staff_updated_at
 BEFORE UPDATE ON staff
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- 11️⃣ Create Results table
-CREATE TABLE IF NOT EXISTS results (
-    id SERIAL PRIMARY KEY,
-    student_id INT NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-    subject VARCHAR(100) NOT NULL,
-    score DECIMAL(5,2) NOT NULL CHECK (score >= 0 AND score <= 100),
-    grade CHAR(1) NOT NULL,
-    term VARCHAR(20) NOT NULL,
-    academic_year VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(student_id, subject, term, academic_year)
-);
-
--- 12️⃣ Create trigger for results updated_at
-CREATE TRIGGER update_results_updated_at
-BEFORE UPDATE ON results
-FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- 13️⃣ Insert default admin user (password stored in plain text for now)
+-- 11️⃣ Insert default admin user (password stored in plain text for now)
 INSERT INTO users (username, email, password, role)
 VALUES ('admin', 'admin@school.com', 'admin123', 'admin')
 ON CONFLICT (username) DO NOTHING;
