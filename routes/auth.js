@@ -254,61 +254,7 @@ router.post('/student-register', async (req, res) => {
             [user_id, admission_number, first_name, last_name, email, date_of_birth || null, gender || null, class_name || null, parent_name || null, parent_phone || null, address || null]
         );
 
-        // Send admission number email
-        const mailOptions = {
-            to: email,
-            from: process.env.EMAIL_USER,
-            subject: 'Welcome to Islamic School - Your Admission Number',
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #1a5f3f; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                        <h2 style="margin: 0;">Islamic School Management System</h2>
-                        <p style="margin: 5px 0 0 0;">Welcome to Our Community</p>
-                    </div>
-                    <div style="background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 5px 5px;">
-                        <p>Dear <strong>${first_name} ${last_name}</strong>,</p>
-                        
-                        <p>Congratulations! Your registration with Islamic School has been successfully completed.</p>
-                        
-                        <div style="background-color: #e8f5e9; border-left: 4px solid #1a5f3f; padding: 15px; margin: 20px 0; border-radius: 3px;">
-                            <p style="margin: 0 0 10px 0;"><strong>Your Admission Details:</strong></p>
-                            <p style="margin: 5px 0;"><strong>Admission Number:</strong> <span style="font-size: 18px; color: #1a5f3f; font-weight: bold;">${admission_number}</span></p>
-                            <p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>
-                            <p style="margin: 5px 0;"><strong>Full Name:</strong> ${first_name} ${last_name}</p>
-                        </div>
-                        
-                        <p><strong>Important:</strong> Please save your admission number. You will need it to log in to the student portal.</p>
-                        
-                        <div style="background-color: #fff3cd; border-left: 4px solid #ff9800; padding: 15px; margin: 20px 0; border-radius: 3px;">
-                            <p style="margin: 0;"><strong>Login Instructions:</strong></p>
-                            <ol style="margin: 10px 0 0 0; padding-left: 20px;">
-                                <li>Visit: <a href="${process.env.APP_URL}/auth/student-login" style="color: #1a5f3f;">Student Login Portal</a></li>
-                                <li>Enter your Admission Number: <strong>${admission_number}</strong></li>
-                                <li>Enter your password</li>
-                                <li>Click Login</li>
-                            </ol>
-                        </div>
-                        
-                        <p>If you have any questions or need assistance, please contact the school administration.</p>
-                        
-                        <p>Best regards,<br><strong>Islamic School Management System</strong></p>
-                    </div>
-                    <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px;">
-                        <p style="margin: 0;">This is an automated email. Please do not reply to this message.</p>
-                    </div>
-                </div>
-            `
-        };
-
-        try {
-            await transporter.sendMail(mailOptions);
-            console.log(`✅ Admission email sent to ${email}`);
-        } catch (emailErr) {
-            console.error('Email sending error:', emailErr);
-            // Don't fail registration if email fails, just log it
-        }
-
-        req.flash('success', `Registration successful! Your admission number is: ${admission_number}. A confirmation email has been sent to ${email}.`);
+        req.flash('success', `Registration successful! Your admission number is: ${admission_number}. Please save it for login.`);
         res.redirect('/auth/student-login');
 
     } catch (err) {
