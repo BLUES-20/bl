@@ -16,7 +16,7 @@ git commit -m "Ready for Render deployment"
 git remote add origin https://github.com/YOUR_USERNAME/islamic-school.git
 git push -u origin main
 ```
-
+postgresql://school_management_7mok_user:vxotLcKN8dbFw7NSbOwIzKqrcgbfQ7Mf@dpg-d5b2kije5dus73fdc140-a/school_management_7mok
 ---
 
 ## Step 2: Create a Render Account
