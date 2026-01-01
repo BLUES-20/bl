@@ -7,29 +7,51 @@ const router = express.Router();
 const db = require('../config/db'); // Make sure this exports a 'pg' client connection
 
 // =================== Nodemailer Setup ===================
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-    }
-});
+let transporter = null;
+let emailEnabled = false;
 
-transporter.verify((error, success) => {
-    if (error) {
-        if (error.responseCode === 535) {
-            console.log('❌ Gmail Auth Failed: You need an App Password.');
-            console.log('   1. Enable 2-Step Verification: https://myaccount.google.com/signinoptions/two-step-verification');
-            console.log('   2. Generate App Password: https://myaccount.google.com/apppasswords');
-            console.log('   3. Update EMAIL_PASS in your .env file with the 16-character App Password.');
+// Only set up email if credentials are provided
+if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+    transporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        },
+        connectionTimeout: 10000,
+        greetingTimeout: 5000,
+        socketTimeout: 10000
+    });
+
+    transporter.verify((error, success) => {
+        if (error) {
+            console.error('Email setup error:', error.message);
+            console.log('⚠️  Email service unavailable. Server will continue without email functionality.');
         } else {
-            console.error('Email setup error:', error);
+            emailEnabled = true;
+            console.log('✅ Gmail transporter ready');
         }
-        console.log('⚠️  Email service unavailable. Server will continue without email functionality.');
-    } else {
-        console.log('✅ Gmail transporter ready');
+    });
+} else {
+    console.log('⚠️  Email credentials not configured. Email features disabled.');
+}
+
+// Helper function to send email safely
+async function sendEmail(mailOptions) {
+    if (!emailEnabled || !transporter) {
+        console.log('📧 Email skipped (not configured):', mailOptions.subject);
+        return false;
     }
-});
+    try {
+        await transporter.sendMail(mailOptions);
+        return true;
+    } catch (err) {
+        console.error('Email sending error:', err.message);
+        return false;
+    }
+}
 
 // =================== STUDENT LOGIN ===================
 router.get('/student-login', (req, res) => {
