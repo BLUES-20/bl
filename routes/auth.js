@@ -1,51 +1,38 @@
 // routes/auth.js
 const express = require('express');
 const bcrypt = require('bcrypt');
-const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const router = express.Router();
-const db = require('../config/db'); // Make sure this exports a 'pg' client connection
+const db = require('../config/db');
 
-// =================== Nodemailer Setup ===================
-let transporter = null;
+// =================== Resend Email Setup ===================
+let resend = null;
 let emailEnabled = false;
 
-// Only set up email if credentials are provided
-if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-    transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 465,
-        secure: true,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-        },
-        connectionTimeout: 10000,
-        greetingTimeout: 5000,
-        socketTimeout: 10000
-    });
-
-    transporter.verify((error, success) => {
-        if (error) {
-            console.error('Email setup error:', error.message);
-            console.log('⚠️  Email service unavailable. Server will continue without email functionality.');
-        } else {
-            emailEnabled = true;
-            console.log('✅ Gmail transporter ready');
-        }
-    });
+// Only set up email if RESEND_API_KEY is provided
+if (process.env.RESEND_API_KEY) {
+    const { Resend } = require('resend');
+    resend = new Resend(process.env.RESEND_API_KEY);
+    emailEnabled = true;
+    console.log('✅ Resend email service ready');
 } else {
-    console.log('⚠️  Email credentials not configured. Email features disabled.');
+    console.log('⚠️  RESEND_API_KEY not configured. Email features disabled.');
 }
 
-// Helper function to send email safely
-async function sendEmail(mailOptions) {
-    if (!emailEnabled || !transporter) {
-        console.log('📧 Email skipped (not configured):', mailOptions.subject);
+// Helper function to send email using Resend
+async function sendEmail(to, subject, html) {
+    if (!emailEnabled || !resend) {
+        console.log('📧 Email skipped (not configured):', subject);
         return false;
     }
     try {
-        await transporter.sendMail(mailOptions);
+        await resend.emails.send({
+            from: 'Islamic School <onboarding@resend.dev>',
+            to: to,
+            subject: subject,
+            html: html
+        });
+        console.log(`✅ Email sent to ${to}`);
         return true;
     } catch (err) {
         console.error('Email sending error:', err.message);
@@ -294,53 +281,33 @@ router.post('/forgot-password', async (req, res) => {
         const appUrl = process.env.APP_URL || `http://${req.headers.host}`;
         const resetLink = `${appUrl}/auth/reset-password/${token}`;
 
-        const mailOptions = {
-            to: email,
-            from: process.env.EMAIL_USER,
-            subject: 'Password Reset Request - Islamic School',
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <div style="background-color: #1a5f3f; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
-                        <h2 style="margin: 0;">Islamic School Management System</h2>
-                        <p style="margin: 5px 0 0 0;">Password Reset Request</p>
-                    </div>
-                    <div style="background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 5px 5px;">
-                        <p>Hello,</p>
-                        
-                        <p>You have requested to reset your password. Click the button below to create a new password.</p>
-                        
-                        <div style="text-align: center; margin: 30px 0;">
-                            <a href="${resetLink}" style="background-color: #1a5f3f; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                                Reset Password
-                            </a>
-                        </div>
-                        
-                        <p>Or copy and paste this link into your browser:</p>
-                        <p style="word-break: break-all; background-color: #f0f0f0; padding: 10px; border-radius: 3px;">
-                            <a href="${resetLink}" style="color: #1a5f3f;">${resetLink}</a>
-                        </p>
-                        
-                        <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
-                        
-                        <p><strong>⏰ Important:</strong> This link will expire in <strong>1 hour</strong>.</p>
-                        
-                        <p>If you did not request this password reset, please ignore this email and your password will remain unchanged.</p>
-                        
-                        <p style="color: #666; font-size: 12px; margin-top: 20px;">
-                            This email was sent from Islamic School Management System.<br>
-                            Do not reply to this email.
-                        </p>
-                    </div>
-                    <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666; border-radius: 0 0 5px 5px;">
-                        <p style="margin: 0;">© 2025 Islamic School Management System. All rights reserved.</p>
-                    </div>
+        const emailHtml = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background-color: #1a5f3f; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0;">
+                    <h2 style="margin: 0;">Islamic School Management System</h2>
+                    <p style="margin: 5px 0 0 0;">Password Reset Request</p>
                 </div>
-            `
-        };
+                <div style="background-color: #f9f9f9; padding: 30px; border: 1px solid #ddd; border-radius: 0 0 5px 5px;">
+                    <p>Hello,</p>
+                    <p>You have requested to reset your password. Click the button below to create a new password.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${resetLink}" style="background-color: #1a5f3f; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                            Reset Password
+                        </a>
+                    </div>
+                    <p>Or copy and paste this link: <a href="${resetLink}">${resetLink}</a></p>
+                    <p><strong>⏰ This link expires in 1 hour.</strong></p>
+                </div>
+            </div>
+        `;
 
-        await transporter.sendMail(mailOptions);
-        console.log(`✅ Password reset email sent to ${email}`);
-        req.flash('success', 'An e-mail has been sent to ' + email + ' with a password reset link. The link will expire in 1 hour.');
+        const sent = await sendEmail(email, 'Password Reset Request - Islamic School', emailHtml);
+        
+        if (sent) {
+            req.flash('success', 'Password reset email sent to ' + email);
+        } else {
+            req.flash('error', 'Email service not available. Please contact admin.');
+        }
         res.redirect('/auth/forgot-password');
 
     } catch (err) {
