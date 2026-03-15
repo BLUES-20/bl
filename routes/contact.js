@@ -18,8 +18,21 @@ router.post('/contact', async (req, res) => {
         name,
         email,
         subject,
-        message
+        message,
+        'g-recaptcha-response': recaptchaToken
     } = req.body;
+
+    // reCAPTCHA verification
+    if (!recaptchaToken) {
+        req.flash('error', 'Please complete the security verification');
+        return res.redirect('/contact');
+    }
+    const verifyRecaptcha = require('./auth').verifyRecaptcha;
+    const recaptchaValid = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaValid) {
+        req.flash('error', 'Security verification failed. Please try again.');
+        return res.redirect('/contact');
+    }
 
     if (!name || !email || !subject || !message) {
         req.flash('error', 'All fields are required');

@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({path: path.join(__dirname, '..', '.env')});
 
 const {
     sendEmail,
@@ -6,11 +7,7 @@ const {
 } = require('../services/email');
 
 async function main() {
-    const to = process.env.TEST_EMAIL_TO;
-    if (!to) {
-        console.error('Missing TEST_EMAIL_TO (set it in your environment)');
-        process.exit(2);
-    }
+    const to = 'hammadibikunle@gmail.com';
 
     const status = getEmailStatus();
     console.log('Email status:', status);
@@ -18,19 +15,18 @@ async function main() {
     const ok = await sendEmail(
         to,
         'Test Email - Islamic School Management',
-        '<p>This is a test email from your app.</p>'
+        '<p>This is a test email from your app. Gmail config test.</p>'
     );
 
     if (!ok) {
-        console.error('Email failed to send. Check your EMAIL_PROVIDER and credentials.');
+        console.error('Email failed to send. Check your EMAIL_USER/PASS or Gmail app pw.');
         process.exit(1);
     }
 
-    console.log('Email sent successfully.');
+    console.log('✅ Email sent successfully to ' + to);
 }
 
 main().catch((err) => {
     console.error(err);
     process.exit(1);
 });
-

@@ -259,6 +259,38 @@ main {
     color: var(--secondary-gold) !important;
 }
 
+/* ========== Profile Avatar ========== */
+.profile-avatar {
+    width: 168px;
+    height: 168px;
+    border-radius: 999px;
+    padding: 5px;
+    background: conic-gradient(from 180deg, #20c997, #28a745, var(--secondary-gold), #28a745, #20c997);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+    position: relative;
+}
+
+.profile-avatar__img {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    object-fit: cover;
+    display: block;
+    background: #f5f7f6;
+    border: 3px solid rgba(255, 255, 255, 0.9);
+}
+
+.profile-avatar--placeholder {
+    background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
+}
+
+@media (max-width: 576px) {
+    .profile-avatar {
+        width: 140px;
+        height: 140px;
+    }
+}
+
 .bg-light-transparent {
     background-color: rgba(255, 255, 255, 0.1);
 }

@@ -16,23 +16,25 @@
     var email = dbStudent.email || sessionStudent.email || 'N/A';
 
     // Handle picture - prioritize database picture, fallback to session
-    var picture = null;
-    if (dbStudent.picture) {
-        // Database stores: /uploads/students/filename.jpg
-        picture = String(dbStudent.picture).replace(/\\/g, '/');
-        // Ensure it starts with / but not //
-        if (!picture.startsWith('/')) {
-            picture = '/' + picture;
-        }
-    } else if (sessionStudent.picture) {
-        picture = String(sessionStudent.picture).replace(/\\/g, '/');
-        if (!picture.startsWith('/')) {
-            picture = '/' + picture;
+    // Supports:
+    // - Local: /uploads/students/filename.jpg or uploads/students/filename.jpg
+    // - Remote: https://... (or accidentally stored as /https://...)
+    var pictureRaw = null;
+    if (dbStudent.picture) pictureRaw = String(dbStudent.picture);
+    else if (sessionStudent.picture) pictureRaw = String(sessionStudent.picture);
+
+    var pictureUrl = null;
+    if (pictureRaw) {
+        var normalized = pictureRaw.replace(/\\/g, '/').trim();
+        if (normalized.startsWith('/http://') || normalized.startsWith('/https://')) normalized = normalized.slice(1);
+
+        if (/^https?:\/\//i.test(normalized)) {
+            pictureUrl = normalized;
+        } else {
+            normalized = normalized.replace(/^\/+/, '');
+            pictureUrl = '/' + normalized;
         }
     }
-    
-    // Debug log (remove in production)
-    console.log('Profile picture:', picture, 'dbStudent.picture:', dbStudent.picture);
 
     var dobText = 'N/A';
     if (dbStudent.date_of_birth) {
@@ -55,9 +57,14 @@
                     <h2 class="fw-bold">
                         <i class="fas fa-user-circle me-2"></i>My Profile
                     </h2>
-                    <a href="/student/dashboard" class="btn btn-secondary btn-sm">
+
+<a href="/student/dashboard" class="btn btn-secondary btn-sm">
                         <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
                     </a>
+                    <a href="/student/print-profile" class="btn btn-success btn-sm ms-2" target="_blank">
+                        <i class="fas fa-print me-2"></i>Print Profile
+                    </a>
+
                 </div>
             </div>
         </div>
@@ -67,13 +74,22 @@
             <div class="col-lg-4 mb-4">
                 <div class="card card-islamic shadow-lg">
                     <div class="card-body text-center p-4">
-                        <% if (picture) { %>
-                        <img src="<%= picture %>" alt="Profile Picture" class="rounded-circle img-fluid mb-3" style="width: 150px; height: 150px; object-fit: cover; border: 4px solid var(--primary-green);">
+                        <% if (pictureUrl) { %>
+                            <div class="profile-avatar mx-auto mb-3">
+                                <img
+                                    src="<%= pictureUrl %>"
+                                    alt="Profile picture of <%= fullName %>"
+                                    class="profile-avatar__img"
+                                    loading="lazy"
+                                    onerror="this.onerror=null; this.src='/images/avatar-placeholder.svg';"
+                                >
+                            </div>
                         <% } else { %>
-                        <div class="avatar-placeholder mx-auto mb-3" style="width: 150px; height: 150px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-green), var(--dark-green)); display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-user fa-4x text-white"></i>
-                        </div>
+                            <div class="profile-avatar profile-avatar--placeholder mx-auto mb-3" aria-hidden="true">
+                                <img src="/images/avatar-placeholder.svg" alt="" class="profile-avatar__img" loading="lazy">
+                            </div>
                         <% } %>
+
                         <h4 class="fw-bold"><%= fullName %></h4>
                         <p class="text-muted mb-1"><%= admissionNumber %></p>
                         <span class="badge bg-success"><%= studentClass %></span>
