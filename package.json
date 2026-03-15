@@ -9,7 +9,9 @@
     "supabase:link": "supabase link --project-ref wkezgixefbywotgutoao",
     "supabase:migration": "supabase migration new",
     "supabase:push": "supabase db push",
-    "email:test": "node scripts/test-email.js"
+    "email:test": "node scripts/test-email.js",
+    "db:init": "node init-db.js",
+    "db:reset": "node scripts/reset-db.js"
   },
     "keywords": [],
     "author": "",

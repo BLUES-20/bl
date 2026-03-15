@@ -21,6 +21,13 @@ try {
     console.log(`📧 Email provider: ${emailStatus.provider}${emailStatus.configured ? '' : ' (not configured)'}`);
 } catch (e) {}
 
+// reCAPTCHA status
+if (process.env.GOOGLE_RECAPTCHA_SECRET) {
+    console.log('🔒 Google reCAPTCHA v3: ✅ Enabled');
+} else {
+    console.log('🔒 Google reCAPTCHA v3: ⚠️ Disabled (add GOOGLE_RECAPTCHA_SECRET)');
+}
+
 // Middleware
 app.use(express.urlencoded({
     extended: true

@@ -32,3 +32,7 @@ services:
         value: "768711335699391"
       - key: CLOUDINARY_API_SECRET
         value: Trvy26meoa_1XQ70qTsCrFWGq2w
+      - key: GOOGLE_RECAPTCHA_SITEKEY
+        value: 6LcG7oosAAAAAI9t2UE-HtzCRak2lBErhqo7IMZe
+      - key: GOOGLE_RECAPTCHA_SECRET
+        value: 6LcG7oosAAAAAE9kfSOFKk_hL88bIbVYQmHSZLyM

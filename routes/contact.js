@@ -18,8 +18,11 @@ router.post('/contact', async (req, res) => {
         name,
         email,
         subject,
-        message
+        message,
+        'g-recaptcha-response': recaptchaToken
     } = req.body;
+
+// reCAPTCHA disabled
 
     if (!name || !email || !subject || !message) {
         req.flash('error', 'All fields are required');

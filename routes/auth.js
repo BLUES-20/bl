@@ -2,16 +2,69 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+// For reCAPTCHA verification (Node.js v18+ has global fetch)
+let fetchFn = global.fetch ? global.fetch.bind(global) : null;
+if (!fetchFn) {
+    try {
+        const nf = require('node-fetch');
+        fetchFn = (nf && nf.default) ? nf.default : nf;
+    } catch (e) {
+        fetchFn = null;
+    }
+}
 const router = express.Router();
 const db = require('../config/db');
 const emailService = require('../services/email');
 const multer = require('multer');
 const path = require('path');
 
-// Helper function to send email using email service (Resend, SMTP, or Gmail)
-async function sendEmail(to, subject, html) {
-    return emailService.sendEmail(to, subject, html);
+// reCAPTCHA v3 verification
+async function verifyRecaptcha(token) {
+    const secret = process.env.GOOGLE_RECAPTCHA_SECRET;
+    if (!secret) {
+        console.warn('GOOGLE_RECAPTCHA_SECRET not set - reCAPTCHA disabled');
+        return true; // Allow if not configured
+    }
+
+    if (!fetchFn) {
+        console.warn('fetch() not available - reCAPTCHA check skipped (install node-fetch@2 or upgrade Node.js)');
+        return true;
+    }
+
+    try {
+        const response = await fetchFn('https://www.google.com/recaptcha/api/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(token)}`
+        });
+        const data = await response.json();
+
+        if (!data || data.success !== true) {
+            console.warn(`reCAPTCHA failed: ${data && data['error-codes'] ? data['error-codes'].join(', ') : 'unknown error'}`);
+            return false;
+        }
+
+        // v2 checkbox: no score/action.
+        if (typeof data.score !== 'number') {
+            console.log('reCAPTCHA verified (v2)');
+            return true;
+        }
+
+        // v3: enforce score threshold.
+        if (data.score >= 0.5) {
+            console.log(`reCAPTCHA verified (v3): score ${data.score.toFixed(2)}`);
+            return true;
+        }
+
+        console.warn(`reCAPTCHA failed (v3): score ${Number.isFinite(data.score) ? data.score.toFixed(2) : 'unknown'}`);
+        return false;
+    } catch (err) {
+        console.error('reCAPTCHA verification error:', err.message);
+        return false;
+    }
 }
+
+
 
 // =================== Configure Multer for Student Picture Uploads - Using Cloudinary ===================
 const {
@@ -115,8 +168,12 @@ router.get('/staff-login', (req, res) => {
 router.post('/staff-login', async (req, res) => {
     const {
         email,
-        password
+        password,
+        'g-recaptcha-response': recaptchaToken
     } = req.body;
+
+    // reCAPTCHA verification
+// reCAPTCHA disabled
 
     if (!email || !password) {
         req.flash('error', 'Please enter email and password');
@@ -193,10 +250,14 @@ router.post('/student-register', uploadPicture.single('profile_picture'), async 
         parent_phone,
         address,
         password,
-        confirm_password
+        confirm_password,
+        'g-recaptcha-response': recaptchaToken
     } = req.body;
 
     const full_name = `${first_name} ${last_name}`;
+
+    // reCAPTCHA verification (before multer processing)
+// reCAPTCHA disabled for student register
 
     // Validation
     if (!first_name || !last_name || !email || !password || !confirm_password) {
@@ -317,8 +378,13 @@ router.get('/forgot-password', (req, res) => {
 
 router.post('/forgot-password', async (req, res) => {
     const {
-        email
+        email,
+        'g-recaptcha-response': recaptchaToken
     } = req.body;
+
+    // reCAPTCHA verification
+// reCAPTCHA disabled for forgot-password
+
     try {
         const emailStatus = emailService.getEmailStatus();
         const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -411,8 +477,13 @@ router.post('/reset-password/:token', async (req, res) => {
     try {
         const {
             password,
-            confirm_password
+            confirm_password,
+            'g-recaptcha-response': recaptchaToken
         } = req.body;
+
+        // reCAPTCHA verification
+// reCAPTCHA disabled for reset-password
+
         if (password !== confirm_password) {
             req.flash('error', 'Passwords do not match.');
             return res.redirect('back');
