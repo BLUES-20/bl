@@ -11,7 +11,9 @@ window.printSection = function printSection(sectionId) {
 
     const printWindow = window.open('', '', 'height=600,width=800');
     printWindow.document.write('<html><head><title>Print</title>');
-    printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
+    printWindow.document.write(
+        '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">'
+    );
     printWindow.document.write('<link rel="stylesheet" href="/css/style.css">');
     printWindow.document.write('</head><body>');
     printWindow.document.write(section.innerHTML);
@@ -50,8 +52,6 @@ window.searchTable = function searchTable(inputId, tableId) {
 };
 
 (function () {
-const RECAPTCHA_SITEKEY = '';
-
     function initTooltips() {
         if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) return;
         const triggers = document.querySelectorAll('[data-bs-toggle="tooltip"]');
@@ -116,53 +116,38 @@ const RECAPTCHA_SITEKEY = '';
         });
     }
 
-function hasRecaptchaForms() {
-    return false;
-}
+    function hasRecaptchaWidget() {
+        return Boolean(document.querySelector('form .g-recaptcha'));
+    }
 
-    function loadRecaptchaV3() {
-        if (!hasRecaptchaForms()) return;
-        if (document.querySelector('script[data-recaptcha-v3="1"]')) return;
+    // Templates use <div class="g-recaptcha" data-sitekey="..."></div> (reCAPTCHA v2 checkbox).
+    function loadRecaptchaV2() {
+        if (!hasRecaptchaWidget()) return;
+        if (document.querySelector('script[data-recaptcha-v2="1"]')) return;
 
         const script = document.createElement('script');
-        script.src = `https://www.google.com/recaptcha/api.js?render=${encodeURIComponent(RECAPTCHA_SITEKEY)}`;
+        script.src = 'https://www.google.com/recaptcha/api.js';
         script.async = true;
         script.defer = true;
-        script.setAttribute('data-recaptcha-v3', '1');
+        script.setAttribute('data-recaptcha-v2', '1');
         document.head.appendChild(script);
     }
 
-    function setupRecaptchaForms() {
-        if (!hasRecaptchaForms()) return;
+    function enforceRecaptchaOnForms() {
+        if (!hasRecaptchaWidget()) return;
 
         const forms = Array.from(document.querySelectorAll('form')).filter((form) => form.querySelector('.g-recaptcha'));
         forms.forEach((form) => {
-            // Prevent double-binding if the page hot-reloads.
             if (form.getAttribute('data-recaptcha-bound') === '1') return;
             form.setAttribute('data-recaptcha-bound', '1');
 
             form.addEventListener('submit', function (e) {
-                // If grecaptcha isn't ready yet, block submit and prompt.
-                if (typeof grecaptcha === 'undefined') {
+                const tokenEl = form.querySelector('textarea[name="g-recaptcha-response"]');
+                const token = tokenEl ? String(tokenEl.value || '').trim() : '';
+                if (!token) {
                     e.preventDefault();
-                    alert('Security verification required');
-                    return;
+                    alert('Please complete the security verification');
                 }
-
-                // If token already attached (e.g. user clicked twice), let it submit normally.
-                if (form.querySelector('input[name="g-recaptcha-response"]')) return;
-
-                e.preventDefault();
-                grecaptcha.ready(function () {
-                    grecaptcha.execute(RECAPTCHA_SITEKEY, { action: 'submit' }).then(function (token) {
-                        const input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'g-recaptcha-response';
-                        input.value = token;
-                        form.appendChild(input);
-                        form.submit();
-                    });
-                });
             });
         });
     }
@@ -174,14 +159,7 @@ function hasRecaptchaForms() {
         initCardObserver();
         initImagePreview();
 
-        loadRecaptchaV3();
-        setupRecaptchaForms();
-
-        // Console welcome message
-        try {
-            console.log('%c🕌 Islamic School Management System', 'color: #0a5f38; font-size: 20px; font-weight: bold;');
-            console.log('%cBuilt with dedication and care', 'color: #0a5f38; font-size: 14px;');
-            if (hasRecaptchaForms()) console.log('%c✅ reCAPTCHA v3 Protection Active', 'color: #28a745; font-size: 12px;');
-        } catch (e) {}
+        loadRecaptchaV2();
+        enforceRecaptchaOnForms();
     });
 })();

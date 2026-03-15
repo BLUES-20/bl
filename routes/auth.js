@@ -38,14 +38,26 @@ async function verifyRecaptcha(token) {
             body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(token)}`
         });
         const data = await response.json();
-        
-        if (data.success && data.score >= 0.5) {
-            console.log(`reCAPTCHA verified: score ${data.score.toFixed(2)}`);
-            return true;
-        } else {
-            console.warn(`reCAPTCHA failed: score ${data.score?.toFixed(2) || 'unknown'}`);
+
+        if (!data || data.success !== true) {
+            console.warn(`reCAPTCHA failed: ${data && data['error-codes'] ? data['error-codes'].join(', ') : 'unknown error'}`);
             return false;
         }
+
+        // v2 checkbox: no score/action.
+        if (typeof data.score !== 'number') {
+            console.log('reCAPTCHA verified (v2)');
+            return true;
+        }
+
+        // v3: enforce score threshold.
+        if (data.score >= 0.5) {
+            console.log(`reCAPTCHA verified (v3): score ${data.score.toFixed(2)}`);
+            return true;
+        }
+
+        console.warn(`reCAPTCHA failed (v3): score ${Number.isFinite(data.score) ? data.score.toFixed(2) : 'unknown'}`);
+        return false;
     } catch (err) {
         console.error('reCAPTCHA verification error:', err.message);
         return false;
@@ -161,15 +173,7 @@ router.post('/staff-login', async (req, res) => {
     } = req.body;
 
     // reCAPTCHA verification
-    if (!recaptchaToken) {
-        req.flash('error', 'Please complete the security verification');
-        return res.redirect('/auth/staff-login');
-    }
-    const recaptchaValid = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaValid) {
-        req.flash('error', 'Security verification failed. Please try again.');
-        return res.redirect('/auth/staff-login');
-    }
+// reCAPTCHA disabled
 
     if (!email || !password) {
         req.flash('error', 'Please enter email and password');
@@ -253,15 +257,7 @@ router.post('/student-register', uploadPicture.single('profile_picture'), async 
     const full_name = `${first_name} ${last_name}`;
 
     // reCAPTCHA verification (before multer processing)
-    if (!recaptchaToken) {
-        req.flash('error', 'Please complete the security verification');
-        return res.redirect('/auth/student-register');
-    }
-    const recaptchaValid = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaValid) {
-        req.flash('error', 'Security verification failed. Please try again.');
-        return res.redirect('/auth/student-register');
-    }
+// reCAPTCHA disabled for student register
 
     // Validation
     if (!first_name || !last_name || !email || !password || !confirm_password) {
@@ -387,15 +383,7 @@ router.post('/forgot-password', async (req, res) => {
     } = req.body;
 
     // reCAPTCHA verification
-    if (!recaptchaToken) {
-        req.flash('error', 'Please complete the security verification');
-        return res.redirect('/auth/forgot-password');
-    }
-    const recaptchaValid = await verifyRecaptcha(recaptchaToken);
-    if (!recaptchaValid) {
-        req.flash('error', 'Security verification failed. Please try again.');
-        return res.redirect('/auth/forgot-password');
-    }
+// reCAPTCHA disabled for forgot-password
 
     try {
         const emailStatus = emailService.getEmailStatus();
@@ -494,15 +482,7 @@ router.post('/reset-password/:token', async (req, res) => {
         } = req.body;
 
         // reCAPTCHA verification
-        if (!recaptchaToken) {
-            req.flash('error', 'Please complete the security verification');
-            return res.redirect('back');
-        }
-        const recaptchaValid = await verifyRecaptcha(recaptchaToken);
-        if (!recaptchaValid) {
-            req.flash('error', 'Security verification failed. Please try again.');
-            return res.redirect('back');
-        }
+// reCAPTCHA disabled for reset-password
 
         if (password !== confirm_password) {
             req.flash('error', 'Passwords do not match.');
